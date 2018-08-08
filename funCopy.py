@@ -5,16 +5,69 @@ import pandas as pd
 from io import StringIO
 import numpy as np
 import time
+
+
 #
-#TIME_SERIES_INTRADAY
 timezones={}
-symbols = ['ASML']
 function = 'TIME_SERIES_INTRADAY'
 api = 'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&outputsize=full&datatype=csv&apikey='
+apid = 'https://www.alphavantage.co/query?function={function}&symbol={symbol}&outputsize=full&datatype=csv&apikey='
 #https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=ASML&interval=1min&outputsize=compact&datatype=csv&time_period=0&apikey=
-
 sector = 'https://www.alphavantage.co/query?function=SECTOR&datatype=csv&apikey='
 
+s_type = ['open','close','high','low']
+ma_types = [1,2,3,4,5,6,7,8]
+#Moving average type By default, matype=0. INT 0 = SMA, 1 = EMA, 2 = Weighted Moving Average (WMA), 3 = Double Exponential Moving Average (DEMA), 4 = Triple Exponential Moving Average (TEMA), 5 = Triangular Moving Average (TRIMA), 6 = T3 Moving Average, 7 = Kaufman Adaptive Moving Average (KAMA), 8 = MESA Adaptive Moving Average (MAMA).
+
+
+indicator_run = {
+	'sma':moving_a,
+	'ema':moving_a,
+	'tema':moving_a,
+	'macd':simple_indicator,
+	'macdext':macdext_get,
+	'stoch',
+	'stochf',
+	'rsi',
+	'stochrsi',
+	'willr',
+	'adx',
+	'adxr',
+	'apo',
+	'ppo',
+	'mom',
+	'bop':simple_indicator,
+	'cci',
+	'cmo',
+	'roc',
+	'rocr',
+	'aroon',
+	'aroonosc',
+	'mfi',
+	'trix',
+	'ultosc',
+	'dx',
+	'minus_di',
+	'plus_di',
+	'minus_dm',
+	'plus_dm',
+	'bbands',
+	'midpoint',
+	'midprice',
+	'sar',
+	'trange':simple_indicator,
+	'atr',
+	'natr',
+	'ad':simple_indicator,
+	'adosc',
+	'obv':simple_indicator,
+	'ht_trendline',
+	'ht_sine',
+	'ht_trendmode',
+	'ht_dcperiod',
+	'ht_dcphase',
+	'ht_dcphasor'
+	}
 
 params = ['function',
 'symbol',
@@ -48,7 +101,6 @@ indicator_dict = {
 	'tema':'https://www.alphavantage.co/query?function=TEMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&datatype=csv&apikey=',
 	'macd':'https://www.alphavantage.co/query?function=MACD&symbol={symbol}&interval={interval}&series_type=close&fastperiod=12&slowperiod=26&signalperiod=9&datatype=csv&apikey=',
 	'macdext':'https://www.alphavantage.co/query?function=MACDEXT&symbol={symbol}&interval={interval}&series_type={series_type}&fastperiod={fastperiod}&slowperiod={slowperiod}&signalperiod={signalperiod}&fastmatype={fastmatype}&slowmatype={slowmatype}&signalmatype={signalmatype}&datatype=csv&apikey=',
-#Moving average type By default, matype=0. Integers 0 - 8 are accepted 0 = Simple Moving Average (SMA), 1 = Exponential Moving Average (EMA), 2 = Weighted Moving Average (WMA), 3 = Double Exponential Moving Average (DEMA), 4 = Triple Exponential Moving Average (TEMA), 5 = Triangular Moving Average (TRIMA), 6 = T3 Moving Average, 7 = Kaufman Adaptive Moving Average (KAMA), 8 = MESA Adaptive Moving Average (MAMA).
 	'stoch':'https://www.alphavantage.co/query?function=STOCH&symbol={symbol}&interval={interval}&fastkperiod={fastkperiod}&slowkperiod={slowkperiod}&slowdperiod={slowdperiod}&slowkmatype={slowkmatype}&slowdmatype={slowdmatype}&datatype=csv&apikey=',
 	'stochf':'https://www.alphavantage.co/query?function=STOCHF&symbol={symbol}&interval={interval}&fastkperiod={fastkperiod}&fastdperiod={fastdperiod}&fastdmatype={fastdmatype}&datatype=csv&apikey=',
 	'rsi':'https://www.alphavantage.co/query?function=RSI&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&datatype=csv&apikey=',
@@ -92,23 +144,83 @@ indicator_dict = {
 	'ht_dcphasor':'https://www.alphavantage.co/query?function=HT_DCPHASOR&symbol={symbol}&interval={interval}&series_type={series_type}&datatype=csv&apikey='
 }
 
+def moving_a(ma,symbol,interval):
+	api = indicator_dict[ma]
+	ma_range = [5,10,15,20,35,50,65,100,125,200,250]
+	out_df = pd.DataFrame()
+
+	for t in ma_range:
+		for s in series_type:
+			indicator = requests.get(api.format(symbol=symbol,interval=interval,time_period = t,series_type=s))
+			fixed = StringIO(indicator.content.decode('utf-8'))
+		#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+			indi_df = pd.read_csv(fixed)
+			out_df = pd.merge(out_df,indi_df,left_index=True,right_index=True,how="outer")
+			#might want to use date time column run and see what the column is called
+
+def macdext_get(macd,symbol, interval):#,types=False,time_period=False):
+	macd_range = [[5,10,3],[10,20,7],[12,26,9],[15,35,11]]
+	api = indicator_dict[macd]
+	for i in macd_range:
+
+
+def stoch_get(stoch,symbol,interval):
+	slowd = 3
+	slowk = 3
+	fastk = 5
+	fastd = 3
+	stoch_ma = 1
+	#EMA
+	api = indicator_dict[stoch]
+
+
+def rsi_get(rsi,symbol,interval):
+	rsi_period = [7,11,14,21]
+	api = indicator_dict[rsi]
+	for i in rsi_period:
+
+
+def simple_indicator(indicator,symbol,interval):
+	api = indicator_dict[indicator]
+	indicator = requests.get(api.format(symbol=symbol,interval=interval))
+	fixed = StringIO(indicator.content.decode('utf-8'))
+#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+	indi_df = pd.read_csv(fixed)
+
+	return indi_df
+
+
+
+def merge_df():
+	
+
+
 def get_data (symbol,interval):
+	if interval in ['1min','5min','15min','30min','60min']:
 
-	intra_json = requests.get(api.format(function = TIME_SERIES_INTRADAY,symbol=symbol,interval=interval))
-	#response 200 = got it
-	fixed = StringIO(intra_json.content.decode('utf-8'))
-	#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
-	intra_df = pd.read_csv(fixed)
-
-	return intra_df
-
-#belenus mn6 a6 a6  nr1 a6 a6 b12 c9 as3 c2, taranis lb4 a12 a12 b9 c6  mn6 b3 c6, mithra nr1 a12 a12 b12   as3 c11
+		intra_csv = requests.get(api.format(function = 'TIME_SERIES_INTRADAY',symbol=symbol,interval=interval))
+		#response 200 = got it
+		fixed = StringIO(intra_csv.content.decode('utf-8'))
+		#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+		intra_df = pd.read_csv(fixed)
+		indicator_df = get_indicators()
+		out_df = merge_df()
+		return out_df
+	elif interval == 'daily':
+		daily_csv = requests.get(apid.format(function = 'TIME_SERIES_DAILY',symbol=symbol))
+		#response 200 = got it
+		fixed = StringIO(daily_csv.content.decode('utf-8'))
+		#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+		d_df = pd.read_csv(fixed)
+		indicator_df = get_indicators()
+		out_df = merge_df()
+		return out_df
 
 def run_live (symbol,interval):
 	df = get_data(symbol,interval)
 	timer = time.asctime()
 
-	while timer[11:15] != '16:0'
+	while timer[11:15] != '16:0':
 
 		intra_json = requests.get(api.format(symbol=symbol,interval=interval))
 		fixed = StringIO(intra_json.content.decode('utf-8'))
@@ -116,123 +228,56 @@ def run_live (symbol,interval):
 		df.append(intra_row_df,ignore_index = True)
 #		time.sleep(60)
 
-def indicators (df#,
-#	rsi=True,
-#	cci=True,
-#	sma = False,
-#	ema = False,
-#	tema=True
-	):
-	
-	ma_range = [5,10,15,20,30,50,60,100,150,200]
 
-	macd_range = [[5,10,3],[10,20,7],[12,26,9],[15,35,11]]
 
-	ma_types = [1,2,3,4,5,6,7,8]
-
-	s_type = ['open','close','high','low']
-
-	slowd = 3
-	slowk = 3
-	fastk = 5
-	fastd = 3
-	stoch_ma = 2
-
-	indicator_list = [
-	'sma',
-	'ema',
-	'tema',
-	'macd',
-	'macdext',
-	'stoch',
-	'stochf',
-	'rsi',
-	'stochrsi',
-	'adx',
-	'adxr',
-	'cci',
-	'aroon',
-	'aroonosc',
-	'bbands',
-	'ad',
-	'adosc',
-	'obv'
-	]
+def get_indicators (symbol,interval
+#df,
+):
 
 	indicators = indicator_dict.keys()
+	indicator_out = pd.DataFrame()
 
-	for i in indcators:
-		if i in indicator_list:
-				indi_json = requests.get(api.format(symbol=symbol,interval=interval)) #additional_arguments='outputsize=full'))
-				fixed = StringIO(indi_json.content.decode('utf-8'))
-				intra_df = pd.read_csv(fixed)
+	for i in indicator_list:
+			indi_out = indicator_run[i](i,symbol,interval)
+			indicator_out = merge_df()
 
-	#additional_arguments = outputsize=full&time_period=100&series_type=close
+	return indicator_out
 
 	#aroon lagging does not predict change, asesses trends strength
 
-	df = df.assign(
-		# row_name = Some_series e.g.(=some_list, =lambda x(row): x['colum_name'] + x['another_column'] * some_math_function)
-		)
+#	df = df.assign(
+#	row_name = Some_series e.g.(=some_list, =lambda x(row): x['colum_name'] + x['another_column'] * some_math_function)
+#		)
+
+symbols = ['ASML']
+indicator_list = [
+'sma',
+'ema',
+'tema',
+'macd',
+'macdext',
+'stoch',
+'stochf',
+'rsi',
+'stochrsi',
+'adx',
+'adxr',
+'cci',
+'aroon',
+'aroonosc',
+'bbands',
+'ad',
+'adosc',
+'obv'
+]
 
 if __name__ == '__main__':
 	print ('Intervals(#,#,#...)=\n1: 1min\n2: 5min\n3: 15min\n4: 30min\n5: 60min')
-	interval = str(5)#int(input('interval')))
+	interval = str(6)#int(input('interval')))
 	interval = interval.split(',')
-	interval_dic = {'1':'1min','2':'5min','3':"15min",'4':'30min','5':'60min'}
+	#list of intervals to run per symbol
+	interval_dic = {'1':'1min','2':'5min','3':"15min",'4':'30min','5':'60min','6':'daily'}
 	
 	for symbol in symbols:
 		for i in range(len(interval)):
-			get_data (symbol,interval=interval_dic[interval[i]])
-
-
-#[
-#	'sma',
-#	'ema',
-#	'tema',
-#	'macd',
-#	'macdext',
-#	'stoch',
-#	'stochf',
-#	'rsi',
-#	'stochrsi',
-#	'willr',
-#	'adx',
-#	'adxr',
-#	'apo',
-#	'ppo',
-#	'mom',
-#	'bop',
-#	'cci',
-#	'cmo',
-#	'roc',
-#	'rocr',
-#	'aroon',
-#	'aroonosc',
-#	'mfi',
-#	'trix',
-#	'ultosc',
-#	'dx',
-#	'minus_di',
-#	'plus_di',
-#	'minus_dm',
-#	'plus_dm',
-#	'bbands',
-#	'midpoint',
-#	'midprice',
-#	'sar',
-#	'trange',
-#	'atr',
-#	'natr',
-#	'ad',
-#	'adosc',
-#	'obv',
-#	'ht_trendline',
-#	'ht_sine',
-#	'ht_trendmode',
-#	'ht_dcperiod',
-#	'ht_dcphase',
-#	'ht_dcphasor'
-#	]
-
-
+			get_data (symbol,interval_dic[interval[i]])
