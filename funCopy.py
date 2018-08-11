@@ -6,94 +6,17 @@ from io import StringIO
 import numpy as np
 import time
 
-
 #
 timezones={}
-function = 'TIME_SERIES_INTRADAY'
-api = 'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&outputsize=full&datatype=csv&apikey='
+#function = 'TIME_SERIES_INTRADAY'
+apii = 'https://www.alphavantage.co/query?function={function}&symbol={symbol}&interval={interval}&outputsize=full&datatype=csv&apikey='
 apid = 'https://www.alphavantage.co/query?function={function}&symbol={symbol}&outputsize=full&datatype=csv&apikey='
 #https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=ASML&interval=1min&outputsize=compact&datatype=csv&time_period=0&apikey=
 sector = 'https://www.alphavantage.co/query?function=SECTOR&datatype=csv&apikey='
 
-s_type = ['open','close','high','low']
-ma_types = [1,2,3,4,5,6,7,8]
+s_type = ['close','high','low']#,'open']
+ma_types = [0,1,2,3,4,5,6,7,8]
 #Moving average type By default, matype=0. INT 0 = SMA, 1 = EMA, 2 = Weighted Moving Average (WMA), 3 = Double Exponential Moving Average (DEMA), 4 = Triple Exponential Moving Average (TEMA), 5 = Triangular Moving Average (TRIMA), 6 = T3 Moving Average, 7 = Kaufman Adaptive Moving Average (KAMA), 8 = MESA Adaptive Moving Average (MAMA).
-
-
-indicator_run = {
-	'sma':moving_a,
-	'ema':moving_a,
-	'tema':moving_a,
-	'macd':simple_indicator,
-	'macdext':macdext_get,
-	'stoch',
-	'stochf',
-	'rsi',
-	'stochrsi',
-	'willr',
-	'adx',
-	'adxr',
-	'apo',
-	'ppo',
-	'mom',
-	'bop':simple_indicator,
-	'cci',
-	'cmo',
-	'roc',
-	'rocr',
-	'aroon',
-	'aroonosc',
-	'mfi',
-	'trix',
-	'ultosc',
-	'dx',
-	'minus_di',
-	'plus_di',
-	'minus_dm',
-	'plus_dm',
-	'bbands',
-	'midpoint',
-	'midprice',
-	'sar',
-	'trange':simple_indicator,
-	'atr',
-	'natr',
-	'ad':simple_indicator,
-	'adosc',
-	'obv':simple_indicator,
-	'ht_trendline',
-	'ht_sine',
-	'ht_trendmode',
-	'ht_dcperiod',
-	'ht_dcphase',
-	'ht_dcphasor'
-	}
-
-params = ['function',
-'symbol',
-'interval',
-'additional_arguments',
-'time_period',
-'series_type',
-'fastperiod',
-'slowperiod',
-'signalperiod',
-'fastmatype',
-'slowmatype',
-'signalmatype',
-'fastkperiod',
-'slowkperiod',
-'slowdperiod',
-'slowkmatype',
-'slowdmatype',
-'fastdperiod',
-'fastdmatype',
-'timeperiod1',
-'timeperiod2',
-'timeperiod3',
-'nbdevup',
-'nbdevdn'
-]
 
 indicator_dict = {
 	'sma':'https://www.alphavantage.co/query?function=SMA&symbol={symbol}&interval={interval}&time_period={time_period}&series_type={series_type}&datatype=csv&apikey=',
@@ -147,22 +70,43 @@ indicator_dict = {
 def moving_a(ma,symbol,interval):
 	api = indicator_dict[ma]
 	ma_range = [5,10,15,20,35,50,65,100,125,200,250]
+	#125
 	out_df = pd.DataFrame()
+	first = True
 
 	for t in ma_range:
-		for s in series_type:
+		for s in s_type:
 			indicator = requests.get(api.format(symbol=symbol,interval=interval,time_period = t,series_type=s))
+			time.sleep(11.8)
 			fixed = StringIO(indicator.content.decode('utf-8'))
 		#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+		if first:
+			out_df = pd.read_csv(fixed)
+			first = False
+		elif first != True:
 			indi_df = pd.read_csv(fixed)
-			out_df = pd.merge(out_df,indi_df,left_index=True,right_index=True,how="outer")
-			#might want to use date time column run and see what the column is called
+			out_df = pd.merge(out_df,indi_df,on='time',how="inner")
+	return out_df
 
 def macdext_get(macd,symbol, interval):#,types=False,time_period=False):
+	out_df = pd.DataFrame()
 	macd_range = [[5,10,3],[10,20,7],[12,26,9],[15,35,11]]
 	api = indicator_dict[macd]
+	macd_ma = 1
+	first=True
 	for i in macd_range:
-
+		for s in s_type:
+			indicator = requests.get(api.format(symbol=symbol,interval=interval,series_type=s,fastperiod=i[0],slowperiod=i[1],signalperiod=i[2],fastmatype=ma_types[1],slowmatype=ma_types[1],signalmatype=ma_types[1]))
+			time.sleep(11.8)
+			fixed = StringIO(indicator.content.decode('utf-8'))
+			#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+			if first:
+				out_df = pd.read_csv(fixed)
+				first = False
+			elif first != True:
+				indi_df = pd.read_csv(fixed)
+				out_df = pd.merge(out_df,indi_df,on='time',how="inner")
+	return out_df
 
 def stoch_get(stoch,symbol,interval):
 	slowd = 3
@@ -173,74 +117,261 @@ def stoch_get(stoch,symbol,interval):
 	#EMA
 	api = indicator_dict[stoch]
 
+	if stoch == 'stoch':
+		indicator = requests.get(api.format(symbol=symbol,interval=interval,fastkperiod=fastk,slowkperiod=slowk,slowdperiod=slowd,slowkmatype=stoch_ma,slowdmatype=stoch_ma))
+		time.sleep(11.8)
+		fixed = StringIO(indicator.content.decode('utf-8'))
+		#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+		indi_df = pd.read_csv(fixed)
+		return indi_df
+
+	elif stoch == 'stochf':
+		indicator = requests.get(api.format(symbol=symbol,interval=interval,fastkperiod=fastk,fastdperiod=fastd,fastdmatype=stoch_ma))
+		time.sleep(11.8)
+		fixed = StringIO(indicator.content.decode('utf-8'))
+		#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+		indi_df = pd.read_csv(fixed)
+		return indi_df
 
 def rsi_get(rsi,symbol,interval):
+	out_df = pd.DataFrame()
 	rsi_period = [7,11,14,21]
 	api = indicator_dict[rsi]
-	for i in rsi_period:
+	first = True
+	for t in rsi_period:
+		for s in s_type:
+			indicator = requests.get(api.format(symbol=symbol,interval=interval,time_period = t,series_type=s))
+			time.sleep(11.8)
+			fixed = StringIO(indicator.content.decode('utf-8'))
+			#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+			if first:
+				out_df = pd.read_csv(fixed)
+				first = False
+			elif first != True:
+				indi_df = pd.read_csv(fixed)
+				out_df = pd.merge(out_df,indi_df,on='time',how="inner")
+	return out_df
+
+def stochrsi_get (indicator,symbol,interval):
+	api = indicator_dict[indicator]
+	fastk = 5
+	fastd = 3
+	fastma = 1
+	stype = 'close'
+	rsi_period = [7,11,14,21]
+	first = True
+	for t in rsi_period:
+		for s in s_type:
+			indicator = requests.get(api.format(symbol=symbol,interval=interval,time_period = t,series_type=s,fastkperiod=fastk,fastdperiod=fastd,fastdmatype=fastma))
+			time.sleep(11.8)
+			fixed = StringIO(indicator.content.decode('utf-8'))
+			#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+			if first:
+				out_df = pd.read_csv(fixed)
+				first = False
+			elif first != True:
+				indi_df = pd.read_csv(fixed)
+				out_df = pd.merge(out_df,indi_df,on='time',how="inner")
+	return out_df
+
+def adx_get(indicator,symbol,interval):
+	api = indicator_dict[indicator]
+	adx_period = [7,11,14,21]
+	first = True
+	for t in adx_period:
+		indicator = requests.get(api.format(symbol=symbol,interval=interval,time_period = t))
+		time.sleep(11.8)
+		fixed = StringIO(indicator.content.decode('utf-8'))
+			#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+		if first:
+			out_df = pd.read_csv(fixed)
+			first = False
+		elif first != True:
+			indi_df = pd.read_csv(fixed)
+			out_df = pd.merge(out_df,indi_df,on='time',how="inner")
+	return out_df
+
+def cci_get(indicator,symbol,interval):
+	api = indicator_dict[indicator]
+	cci_range = [5,10,15,20,35,50,65,85,100,125,200,250]
+	first = True
+	#annual/time period cycle high to high divided by three is the official time period
+	for t in cci_range:
+		indicator = requests.get(api.format(symbol=symbol,interval=interval,time_period = t))
+		time.sleep(11.8)
+		fixed = StringIO(indicator.content.decode('utf-8'))
+			#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+		if first:
+			out_df = pd.read_csv(fixed)
+			first = False
+		elif first != True:
+			indi_df = pd.read_csv(fixed)
+			out_df = pd.merge(out_df,indi_df,on='time',how="inner")
+	return out_df
+
+def aroon_get(indicator,symbol,interval):
+	api= indicator_dict[indicator]
+	aroon_range = [5,10,15,20,35,50,65,85,100,125,200,250]
+	#period since last highest high and lowest low
+	first = True
+	for t in aroon_range:
+		indicator = requests.get(api.format(symbol=symbol,interval=interval,time_period = t))
+		time.sleep(11.8)
+		fixed = StringIO(indicator.content.decode('utf-8'))
+			#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+		if first:
+			out_df = pd.read_csv(fixed)
+			first = False
+		elif first != True:
+			indi_df = pd.read_csv(fixed)
+			out_df = pd.merge(out_df,indi_df,on='time',how="inner")
+	return out_df
+
+def bbands_get(indicator,symbol,interval):
+	api= indicator_dict[indicator]
+	bb_range = [5,10,15,20,35,50,65,100,125,200,250]
+	ndup = 2
+	nddn = 2
+	bband_ma = [0,1,4]
+	first = True
+	for t in bb_range:
+		for m in bband_ma:
+			for s in s_type:
+				indicator = requests.get(api.format(symbol=symbol,interval=interval,time_period = t,series_type=s,nbdevup=ndup,nbdevdn=nddn,matype=m))
+				time.sleep(11.8)
+				fixed = StringIO(indicator.content.decode('utf-8'))
+			#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+				if first:
+					out_df = pd.read_csv(fixed)
+					first = False
+				elif first != True:
+					indi_df = pd.read_csv(fixed)
+					out_df = pd.merge(out_df,indi_df,on='time',how="inner")
+	return out_df
+
+def adosc_get(indicator,symbol,interval):
+	api= indicator_dict[indicator]
+	fastperiod = 3
+	slowperiod = 10
+	first = True
+	#2,7?
+	indicator = requests.get(api.format(symbol=symbol,interval=interval,fastperiod=fastperiod,slowperiod=slowperiod))
+	time.sleep(11.8)
+	fixed = StringIO(indicator.content.decode('utf-8'))
+#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
+	out_df = pd.read_csv(fixed)
+	return out_df
 
 
 def simple_indicator(indicator,symbol,interval):
 	api = indicator_dict[indicator]
 	indicator = requests.get(api.format(symbol=symbol,interval=interval))
+	time.sleep(11.8)
 	fixed = StringIO(indicator.content.decode('utf-8'))
 #pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
 	indi_df = pd.read_csv(fixed)
-
 	return indi_df
 
-
-
-def merge_df():
-	
-
+indicator_run = {
+	'sma':moving_a,
+	'ema':moving_a,
+	'tema':moving_a,
+	'macd':simple_indicator,
+	'macdext':macdext_get,
+	'stoch':stoch_get,
+	'stochf':stoch_get,
+	'rsi':rsi_get,
+	'stochrsi':stochrsi_get,
+	'willr':'notassigned',
+	'adx':adx_get,
+	'adxr':adx_get,
+	'apo':'notassigned',
+	'ppo':'notassigned',
+	'mom':'notassigned',
+	'bop':simple_indicator,
+	'cci':cci_get,
+	'cmo':'notassigned',
+	'roc':'notassigned',
+	'rocr':'notassigned',
+	'aroon':aroon_get,
+	'aroonosc':aroon_get,
+	'mfi':'notassigned',
+	'trix':'notassigned',
+	'ultosc':'notassigned',
+	'dx':'notassigned',
+	'minus_di':'notassigned',
+	'plus_di':'notassigned',
+	'minus_dm':'notassigned',
+	'plus_dm':'notassigned',
+	'bbands':bbands_get,
+	'midpoint':'notassigned',
+	'midprice':'notassigned',
+	'sar':'notassigned',
+	'trange':simple_indicator,
+	'atr':'notassigned',
+	'natr':'notassigned',
+	'ad':simple_indicator,
+	'adosc':adosc_get,
+	'obv':simple_indicator,
+	'ht_trendline':'notassigned',
+	'ht_sine':'notassigned',
+	'ht_trendmode':'notassigned',
+	'ht_dcperiod':'notassigned',
+	'ht_dcphase':'notassigned',
+	'ht_dcphasor':'notassigned'
+	}
 
 def get_data (symbol,interval):
 	if interval in ['1min','5min','15min','30min','60min']:
-
-		intra_csv = requests.get(api.format(function = 'TIME_SERIES_INTRADAY',symbol=symbol,interval=interval))
+		intra_csv = requests.get(apii.format(function = 'TIME_SERIES_INTRADAY',symbol=symbol,interval=interval))
+		time.sleep(11.8)
 		#response 200 = got it
 		fixed = StringIO(intra_csv.content.decode('utf-8'))
 		#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
 		intra_df = pd.read_csv(fixed)
-		indicator_df = get_indicators()
-		out_df = merge_df()
+		indicator_df = get_indicators(symbol,interval)
+		out_df = pd.merge(intra_df,indicator_df,on='time',how='inner')
 		return out_df
 	elif interval == 'daily':
 		daily_csv = requests.get(apid.format(function = 'TIME_SERIES_DAILY',symbol=symbol))
+		time.sleep(11.8)
 		#response 200 = got it
+		indicator_df = get_indicators(symbol,interval)
 		fixed = StringIO(daily_csv.content.decode('utf-8'))
 		#pandas.read_csv needs a filepath for strings use StringIO from IO to convert Str to filepath
 		d_df = pd.read_csv(fixed)
-		indicator_df = get_indicators()
-		out_df = merge_df()
+
+		print(d_df)
+		print(indicator_df)
+		out_df = pd.merge(d_df,indicator_df,left_index=True,right_index=True,how='inner')
 		return out_df
 
 def run_live (symbol,interval):
 	df = get_data(symbol,interval)
 	timer = time.asctime()
-
 	while timer[11:15] != '16:0':
-
 		intra_json = requests.get(api.format(symbol=symbol,interval=interval))
+		time.sleep(11.8)
 		fixed = StringIO(intra_json.content.decode('utf-8'))
 		intra_row_df = pd.read_csv(fixed)
 		df.append(intra_row_df,ignore_index = True)
 #		time.sleep(60)
 
-
-
 def get_indicators (symbol,interval
 #df,
 ):
-
 	indicators = indicator_dict.keys()
-	indicator_out = pd.DataFrame()
-
+	first = True
 	for i in indicator_list:
-			indi_out = indicator_run[i](i,symbol,interval)
-			indicator_out = merge_df()
-
+		indi_out = indicator_run[i](i,symbol,interval)
+		if first:
+			indicator_out = indi_out
+			first = False
+		elif first != True:
+			try:
+				indicator_out = pd.merge(indicator_out,indi_out,on='time',how='inner')
+			except Exception:
+				print(i)
 	return indicator_out
 
 	#aroon lagging does not predict change, asesses trends strength
@@ -262,6 +393,7 @@ indicator_list = [
 'stochrsi',
 'adx',
 'adxr',
+'bop',
 'cci',
 'aroon',
 'aroonosc',
@@ -272,7 +404,7 @@ indicator_list = [
 ]
 
 if __name__ == '__main__':
-	print ('Intervals(#,#,#...)=\n1: 1min\n2: 5min\n3: 15min\n4: 30min\n5: 60min')
+	print ('Intervals(#,#,#...)=\n1: 1min\n2: 5min\n3: 15min\n4: 30min\n5: 60min\n6: daily')
 	interval = str(6)#int(input('interval')))
 	interval = interval.split(',')
 	#list of intervals to run per symbol
@@ -280,4 +412,33 @@ if __name__ == '__main__':
 	
 	for symbol in symbols:
 		for i in range(len(interval)):
-			get_data (symbol,interval_dic[interval[i]])
+			csv_df = get_data (symbol,interval_dic[interval[i]])
+			name = '_'.join([symbol,interval_dic[interval[i]]])
+			csv_df.to_csv(name,sep='\t')
+
+
+params = ['function',
+'symbol',
+'interval',
+'additional_arguments',
+'time_period',
+'series_type',
+'fastperiod',
+'slowperiod',
+'signalperiod',
+'fastmatype',
+'slowmatype',
+'signalmatype',
+'fastkperiod',
+'slowkperiod',
+'slowdperiod',
+'slowkmatype',
+'slowdmatype',
+'fastdperiod',
+'fastdmatype',
+'timeperiod1',
+'timeperiod2',
+'timeperiod3',
+'nbdevup',
+'nbdevdn'
+]
